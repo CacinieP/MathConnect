@@ -1,16 +1,65 @@
-# React + Vite
+# MathConnect
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+MathConnect turns equivalent infinitesimals into a fast connect-the-pairs puzzle for calculus practice.
 
-Currently, two official plugins are available:
+[Play the live game](https://caciniep.github.io/MathConnect/) | [View the source](https://github.com/CacinieP/MathConnect)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+![MathConnect preview](public/social-preview.png)
 
-## React Compiler
+## Why This Exists
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Equivalent infinitesimals are usually memorized as a list. MathConnect makes that list interactive: clear the board by connecting two formulas that behave the same as `x -> 0`, while following a Lianliankan-style path rule.
 
-## Expanding the ESLint configuration
+The result is a small browser game that helps learners recognize patterns like:
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+| Family | Matching examples |
+| --- | --- |
+| `x` | `sin x`, `tan x`, `arcsin x`, `arctan x`, `e^x - 1`, `ln(1+x)` |
+| `2x` | `sin(2x)`, `tan(2x)`, `e^{2x} - 1`, `ln(1+2x)` |
+| `x^2 / 2` | `1 - cos x` |
+| `x^2` | `2(1 - cos x)`, `sin^2 x` |
+
+## How To Play
+
+1. Pick two tiles with equivalent behavior as `x -> 0`.
+2. The tiles must connect through empty space with at most two turns.
+3. Clear the full board and start another round.
+
+## Current Scope
+
+- Level: equivalent infinitesimals for `x -> 0`
+- Board: 6 by 10 on desktop, 8 by 6 on small screens
+- Rendering: KaTeX-powered math tiles
+- Stack: React, Vite, JavaScript, CSS
+- Deployment: GitHub Pages
+
+## Roadmap
+
+- Add timed and relaxed modes
+- Add hint and shuffle controls
+- Add more calculus levels: limits, derivatives, integrals, and Taylor expansions
+- Track streaks, mistakes, and completion time
+- Add a bilingual rules panel for classroom use
+
+## Local Development
+
+```bash
+npm install
+npm run dev
+```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+Run the lightweight game-logic check:
+
+```bash
+node testGame.js
+```
+
+## License
+
+MIT

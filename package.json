@@ -2,6 +2,8 @@
   "name": "math-connect",
   "private": true,
   "version": "0.0.0",
+  "description": "A calculus connect puzzle for practicing equivalent infinitesimals.",
+  "homepage": "https://caciniep.github.io/MathConnect/",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,28 +1,71 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import Tile from './Tile';
 import { generateGrid, checkMatch, findPath } from '../utils/gameLogic';
-import classNames from 'classnames';
+
+const INTRO_MESSAGE = 'Match formulas that behave the same as x approaches 0.';
+const ROWS = 6;
+const COLS = 10;
+const MOBILE_ROWS = 8;
+const MOBILE_COLS = 6;
+
+const getBoardSize = () => {
+    if (typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches) {
+        return { rows: MOBILE_ROWS, cols: MOBILE_COLS };
+    }
+
+    return { rows: ROWS, cols: COLS };
+};
+
+const createInitialGrid = () => {
+    try {
+        const { rows, cols } = getBoardSize();
+        return generateGrid(rows, cols);
+    } catch (e) {
+        console.error("Failed to generate grid", e);
+        return [];
+    }
+};
 
 const GameBoard = () => {
-    const [grid, setGrid] = useState([]);
+    const [grid, setGrid] = useState(createInitialGrid);
     const [selectedTile, setSelectedTile] = useState(null);
     const [path, setPath] = useState(null);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [errorTileIds, setErrorTileIds] = useState([]);
+    const [moveCount, setMoveCount] = useState(0);
+    const [message, setMessage] = useState(INTRO_MESSAGE);
 
-    // Initialize Game
-    useEffect(() => {
-        startNewGame();
-    }, []);
+    const totalTiles = grid.length * (grid[0]?.length || 0);
+    const matchedTiles = useMemo(
+        () => grid.flat().filter(tile => tile.status === 'matched').length,
+        [grid]
+    );
+    const remainingTiles = totalTiles - matchedTiles;
+    const progress = totalTiles ? Math.round((matchedTiles / totalTiles) * 100) : 0;
 
     const startNewGame = () => {
-        try {
-            const newGrid = generateGrid(6, 10); // 6x10 grid
-            setGrid(newGrid);
-            setSelectedTile(null);
-            setPath(null);
-        } catch (e) {
-            console.error("Failed to generate grid", e);
-        }
+        setGrid(createInitialGrid());
+        setSelectedTile(null);
+        setPath(null);
+        setErrorTileIds([]);
+        setMoveCount(0);
+        setMessage(INTRO_MESSAGE);
+    };
+
+    const triggerError = async (tiles, feedback) => {
+        setErrorTileIds(tiles.map(tile => tile.id));
+        setMessage(feedback);
+        await new Promise(r => setTimeout(r, 320));
+        setErrorTileIds([]);
+    };
+
+    const getPathPoint = (point) => {
+        const rows = grid.length || 1;
+        const cols = grid[0]?.length || 1;
+        const x = point.col < 0 ? 0 : point.col >= cols ? 100 : (point.col + 0.5) * (100 / cols);
+        const y = point.row < 0 ? 0 : point.row >= rows ? 100 : (point.row + 0.5) * (100 / rows);
+
+        return `${x}%,${y}%`;
     };
 
     const handleTileClick = async (tile) => {
@@ -45,35 +88,41 @@ const GameBoard = () => {
         const match = checkMatch(selectedTile, tile);
 
         if (match) {
-            // Check path
             const foundPath = findPath(grid,
                 { row: selectedTile.row, col: selectedTile.col },
                 { row: tile.row, col: tile.col }
             );
 
             if (foundPath) {
-                // Valid Match with Path
                 setPath(foundPath);
+                setMoveCount(count => count + 1);
 
-                // Wait for animation
                 await new Promise(r => setTimeout(r, 500));
 
-                // Update grid to remove tiles
                 setGrid(prevGrid => {
                     const newGrid = prevGrid.map(row => row.map(t => ({ ...t })));
                     newGrid[selectedTile.row][selectedTile.col].status = 'matched';
                     newGrid[tile.row][tile.col].status = 'matched';
                     return newGrid;
                 });
+
+                const nextMatchedTiles = matchedTiles + 2;
+                setMessage(
+                    nextMatchedTiles === totalTiles
+                        ? 'Board cleared. Start a new round when ready.'
+                        : 'Connected. Keep clearing equivalent formulas.'
+                );
             } else {
-                // Match but no path (shouldn't happen often if logic is right, but possible)
-                // For now treat as error or just ignore? 
-                // Lianliankan rules: must have path.
-                await triggerError(tile);
+                await triggerError(
+                    [selectedTile, tile],
+                    'Equivalent formulas still need a path with two turns or fewer.'
+                );
             }
         } else {
-            // No match
-            await triggerError(tile);
+            await triggerError(
+                [selectedTile, tile],
+                'Not the same infinitesimal family. Try another pair.'
+            );
         }
 
         // Reset state
@@ -82,59 +131,92 @@ const GameBoard = () => {
         setIsProcessing(false);
     };
 
-    const triggerError = async (secondTile) => {
-        // Visual feedback for error could be added here
-        // For now just a small delay
-        await new Promise(r => setTimeout(r, 300));
-    };
-
     return (
         <div className="game-container">
-            <h1 className="game-title">
-                MATH <span className="highlight">CONNECT</span>
-            </h1>
+            <main className="game-shell">
+                <section className="intro-panel" aria-labelledby="game-title">
+                    <p className="eyebrow">Calculus memory puzzle</p>
+                    <h1 id="game-title" className="game-title">
+                        Math<span>Connect</span>
+                    </h1>
+                    <p className="tagline">
+                        Pair equivalent infinitesimals, then clear them through an open path with at most two turns.
+                    </p>
+                    <div className="formula-strip" aria-label="Example equivalent infinitesimals">
+                        <span>sin x ~ x</span>
+                        <span>tan x ~ x</span>
+                        <span>e^x - 1 ~ x</span>
+                    </div>
+                    <ol className="rule-list">
+                        <li>Choose two formulas from the same infinitesimal family.</li>
+                        <li>Use empty space or the outside edge to connect the path.</li>
+                        <li>Clear all {totalTiles || 60} tiles to finish the round.</li>
+                    </ol>
+                </section>
 
-            <div className="game-board">
-                {/* Grid Layer */}
-                <div className="grid-layer" style={{ gridTemplateColumns: `repeat(${grid[0]?.length || 10}, minmax(0, 1fr))` }}>
-                    {grid.map((row, rIndex) => (
-                        row.map((tile, cIndex) => (
-                            <Tile
-                                key={tile.id}
-                                content={tile.content}
-                                status={tile.status}
-                                isSelected={selectedTile?.id === tile.id}
-                                onClick={() => handleTileClick(tile)}
-                            />
-                        ))
-                    ))}
-                </div>
+                <section className="play-panel" aria-label="MathConnect board">
+                    <div className="hud-row">
+                        <div className="hud-item">
+                            <span>Level</span>
+                            <strong>Equivalent infinitesimals</strong>
+                        </div>
+                        <div className="hud-item">
+                            <span>Remaining</span>
+                            <strong>{remainingTiles || 0}</strong>
+                        </div>
+                        <div className="hud-item">
+                            <span>Moves</span>
+                            <strong>{moveCount}</strong>
+                        </div>
+                        <div className="hud-item">
+                            <span>Cleared</span>
+                            <strong>{progress}%</strong>
+                        </div>
+                    </div>
 
-                {/* Path Overlay Layer */}
-                {path && (
-                    <svg className="path-layer">
-                        <polyline
-                            points={path.map(p => {
-                                // Calculate center of tile. 
-                                // Assuming tile is approx 80px + margin. 
-                                // This is tricky without exact refs. 
-                                // Let's use percentage based on grid size.
-                                const x = (p.col + 0.5) * (100 / grid[0].length);
-                                const y = (p.row + 0.5) * (100 / grid.length);
-                                return `${x}%,${y}%`;
-                            }).join(' ')}
-                            className="path-line"
-                        />
-                    </svg>
-                )}
-            </div>
+                    <div className="game-board">
+                        <div
+                            className="grid-layer"
+                            role="grid"
+                            aria-label="Equivalent infinitesimal tiles"
+                            style={{ gridTemplateColumns: `repeat(${grid[0]?.length || 10}, var(--tile-width))` }}
+                        >
+                            {grid.map(row => (
+                                row.map(tile => (
+                                    <Tile
+                                        key={tile.id}
+                                        content={tile.content}
+                                        status={tile.status}
+                                        isSelected={selectedTile?.id === tile.id}
+                                        isError={errorTileIds.includes(tile.id)}
+                                        onClick={() => handleTileClick(tile)}
+                                    />
+                                ))
+                            ))}
+                        </div>
 
-            <button
-                onClick={startNewGame}
-                className="reset-button"
-            >
-                Reset Game
-            </button>
+                        {path && (
+                            <svg className="path-layer" aria-hidden="true">
+                                <polyline
+                                    points={path.map(getPathPoint).join(' ')}
+                                    className="path-line"
+                                />
+                            </svg>
+                        )}
+                    </div>
+
+                    <div className="control-row">
+                        <button
+                            type="button"
+                            onClick={startNewGame}
+                            className="reset-button"
+                        >
+                            New round
+                        </button>
+                        <p className="status-message" aria-live="polite">{message}</p>
+                    </div>
+                </section>
+            </main>
         </div>
     );
 };

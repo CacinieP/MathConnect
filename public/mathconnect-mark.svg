@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="MathConnect mark">
+  <rect width="128" height="128" rx="24" fill="#151312"/>
+  <path d="M32 36h24a12 12 0 0 1 12 12v32a12 12 0 0 0 12 12h16" fill="none" stroke="#f59e0b" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="32" cy="36" r="13" fill="#0f766e" stroke="#fff7ed" stroke-width="4"/>
+  <circle cx="96" cy="92" r="13" fill="#0f766e" stroke="#fff7ed" stroke-width="4"/>
+  <text x="64" y="72" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="800" fill="#fff7ed">MC</text>
+</svg>

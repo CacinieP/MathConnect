@@ -97,8 +97,9 @@ export const checkMatch = (tile1, tile2) => {
 
 /**
  * Pathfinding for Lianliankan (max 2 turns).
- * Uses BFS.
- * @param {Array<Array<Object>>} grid 
+ * The search includes a one-tile virtual border so edge pairs can connect
+ * through the outside path, which is expected in classic Lianliankan rules.
+ * @param {Array<Array<Object>>} grid
  * @param {Object} start {row, col}
  * @param {Object} end {row, col}
  * @returns {Array<{row, col}> | null} Path as array of coordinates, or null if no path.
@@ -107,7 +108,6 @@ export const findPath = (grid, start, end) => {
   const rows = grid.length;
   const cols = grid[0].length;
 
-  // Directions: Up, Down, Left, Right
   const directions = [
     { dr: -1, dc: 0 },
     { dr: 1, dc: 0 },
@@ -115,79 +115,58 @@ export const findPath = (grid, start, end) => {
     { dr: 0, dc: 1 }
   ];
 
-  // Queue: { row, col, turns, directionIndex, path }
-  // directionIndex: -1 for start, 0-3 for others
-  const queue = [];
+  const queue = [{
+    row: start.row,
+    col: start.col,
+    turns: 0,
+    lastDir: -1,
+    path: [start]
+  }];
 
-  // Initialize queue with start neighbors
-  for (let i = 0; i < directions.length; i++) {
-    const nextR = start.row + directions[i].dr;
-    const nextC = start.col + directions[i].dc;
-
-    if (isValid(nextR, nextC, rows, cols)) {
-      // If immediate neighbor is the target
-      if (nextR === end.row && nextC === end.col) {
-        return [start, end];
-      }
-      // If empty, add to queue
-      if (grid[nextR][nextC].status === 'matched') {
-        queue.push({
-          row: nextR,
-          col: nextC,
-          turns: 0,
-          lastDir: i,
-          path: [start, { row: nextR, col: nextC }]
-        });
-      }
-    }
-  }
-
-  // Visited: [row][col][direction] -> min turns
-  // We need to track visited per direction because arriving at a cell from different directions 
-  // might allow different future turns.
   const visited = new Map();
   const getVisKey = (r, c, dir) => `${r},${c},${dir}`;
 
   while (queue.length > 0) {
     const { row, col, turns, lastDir, path } = queue.shift();
 
-    // Explore neighbors
     for (let i = 0; i < directions.length; i++) {
       const nextR = row + directions[i].dr;
       const nextC = col + directions[i].dc;
-
-      // Calculate new turns
-      const newTurns = (lastDir !== -1 && lastDir !== i) ? turns + 1 : turns;
+      const newTurns = lastDir !== -1 && lastDir !== i ? turns + 1 : turns;
 
       if (newTurns > 2) continue;
+      if (!isWithinSearchArea(nextR, nextC, rows, cols)) continue;
+      if (!isPassable(grid, nextR, nextC, start, end)) continue;
 
-      if (isValid(nextR, nextC, rows, cols)) {
-        // Check if target found
-        if (nextR === end.row && nextC === end.col) {
-          return [...path, end];
-        }
-
-        // If empty, continue
-        if (grid[nextR][nextC].status === 'matched') {
-          const key = getVisKey(nextR, nextC, i);
-          if (!visited.has(key) || visited.get(key) > newTurns) {
-            visited.set(key, newTurns);
-            queue.push({
-              row: nextR,
-              col: nextC,
-              turns: newTurns,
-              lastDir: i,
-              path: [...path, { row: nextR, col: nextC }]
-            });
-          }
-        }
+      if (nextR === end.row && nextC === end.col) {
+        return [...path, end];
       }
+
+      const key = getVisKey(nextR, nextC, i);
+      if (visited.has(key) && visited.get(key) <= newTurns) continue;
+
+      visited.set(key, newTurns);
+      queue.push({
+        row: nextR,
+        col: nextC,
+        turns: newTurns,
+        lastDir: i,
+        path: [...path, { row: nextR, col: nextC }]
+      });
     }
   }
 
   return null;
 };
 
-const isValid = (r, c, rows, cols) => {
-  return r >= 0 && r < rows && c >= 0 && c < cols;
+const isWithinSearchArea = (r, c, rows, cols) => {
+  return r >= -1 && r <= rows && c >= -1 && c <= cols;
+};
+
+const isPassable = (grid, r, c, start, end) => {
+  if (r === start.row && c === start.col) return true;
+  if (r === end.row && c === end.col) return true;
+  if (r < 0 || r >= grid.length || c < 0 || c >= grid[0].length) return true;
+
+  return grid[r][c].status === 'matched';
 };
