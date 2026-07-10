@@ -21,8 +21,10 @@ export default function LevelSelect({ progress, onSelectLevel, lang = 'zh' }) {
               onClick={() => onSelectLevel(levelId)}
             >
               <h3>
+                <span className="level-card-title">
+                  {lang === 'zh' ? level.titleZh : level.title}
+                </span>
                 {isLocked && <span className="lock-icon">🔒</span>}
-                {lang === 'zh' ? level.titleZh : level.title}
               </h3>
               <p>{lang === 'zh' ? level.descriptionZh : level.description}</p>
             </button>

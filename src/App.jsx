@@ -75,27 +75,14 @@ function App() {
             lang={settings.lang}
           />
 
-          <div style={{
-            maxWidth: '800px',
-            margin: '0 auto',
-            padding: '0 1rem 2rem',
-            display: 'grid',
-            gap: '1rem',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))'
-          }}>
-            <div style={{
-              border: '1px solid var(--border)',
-              borderRadius: '12px',
-              padding: '1rem',
-              background: 'var(--surface-glass)'
-            }}>
-              <h3 style={{ margin: '0 0 0.75rem', color: 'var(--accent-soft)' }}>
-                {t('mode', settings.lang)}
-              </h3>
+          <div className="menu-options">
+            <div className="option-card">
+              <h3 className="option-card-title">{t('mode', settings.lang)}</h3>
               {['guide', 'classic', 'challenge'].map(m => (
-                <label key={m} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                <label key={m} className="option-label">
                   <input
                     type="radio"
+                    className="option-input"
                     name="mode"
                     value={m}
                     checked={mode === m}
@@ -106,19 +93,13 @@ function App() {
               ))}
             </div>
 
-            <div style={{
-              border: '1px solid var(--border)',
-              borderRadius: '12px',
-              padding: '1rem',
-              background: 'var(--surface-glass)'
-            }}>
-              <h3 style={{ margin: '0 0 0.75rem', color: 'var(--accent-soft)' }}>
-                {t('difficulty', settings.lang)}
-              </h3>
+            <div className="option-card">
+              <h3 className="option-card-title">{t('difficulty', settings.lang)}</h3>
               {['easy', 'normal', 'hard'].map(d => (
-                <label key={d} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
+                <label key={d} className="option-label">
                   <input
                     type="radio"
+                    className="option-input"
                     name="difficulty"
                     value={d}
                     checked={difficulty === d}

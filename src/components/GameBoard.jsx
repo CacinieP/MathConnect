@@ -326,7 +326,7 @@ const GameBoard = ({
                             className="grid-layer"
                             role="grid"
                             aria-label="Math tiles"
-                            style={{ gridTemplateColumns: `repeat(${grid[0]?.length || 10}, var(--tile-width))` }}
+                            style={{ gridTemplateColumns: `repeat(${grid[0]?.length || 10}, minmax(0, 1fr))` }}
                         >
                             {grid.map(row => (
                                 row.map(tile => (
