@@ -1,66 +1,67 @@
-// lodash import removed 
-// Actually, I'll write vanilla JS helpers to avoid extra deps for now, or use what I have.
+import { LEVELS } from '../data/levels.js';
 
-// Level 1 Content: Equivalent Infinitesimals (x -> 0)
-export const EQUIVALENCE_CLASSES = {
-  'x': [
-    'x',
-    '\\sin x',
-    '\\tan x',
-    '\\arcsin x',
-    '\\arctan x',
-    'e^x - 1',
-    '\\ln(1+x)'
-  ],
-  '2x': [
-    '2x',
-    '\\sin(2x)',
-    '\\tan(2x)',
-    'e^{2x} - 1',
-    '\\ln(1+2x)'
-  ],
-  'half_x_sq': [
-    '\\frac{1}{2}x^2',
-    '1 - \\cos x'
-  ],
-  'x_sq': [
-    'x^2',
-    '2(1 - \\cos x)',
-    '\\sin^2 x'
-  ]
-};
+// Default level used when none is specified
+const DEFAULT_LEVEL_ID = 'infinitesimals';
 
-// Helper to get a random item from an array
 const randomChoice = (arr) => arr[Math.floor(Math.random() * arr.length)];
 
 /**
- * Generates a grid of tiles.
- * @param {number} rows 
- * @param {number} cols 
+ * Get the group definitions for a level.
+ */
+export function getLevelGroups(levelId = DEFAULT_LEVEL_ID) {
+  const level = LEVELS[levelId] || LEVELS[DEFAULT_LEVEL_ID];
+  return level.groups;
+}
+
+/**
+ * Generates a grid of tiles for the given level.
+ * @param {number} rows
+ * @param {number} cols
+ * @param {string} levelId
+ * @param {string} difficulty - 'easy' | 'normal' | 'hard'
  * @returns {Array<Array<Object>>} 2D array of tile objects
  */
-export const generateGrid = (rows, cols) => {
+export const generateGrid = (rows, cols, levelId = DEFAULT_LEVEL_ID, difficulty = 'normal') => {
   const totalTiles = rows * cols;
   if (totalTiles % 2 !== 0) {
     throw new Error("Grid size must be even");
   }
 
+  const level = LEVELS[levelId] || LEVELS[DEFAULT_LEVEL_ID];
+  const allGroups = Object.values(level.groups);
+
+  // Select groups based on difficulty
+  let selectedGroups = allGroups;
+  if (difficulty === 'easy') {
+    selectedGroups = allGroups.slice(0, Math.min(3, allGroups.length));
+  } else if (difficulty === 'hard') {
+    selectedGroups = allGroups;
+  } else {
+    selectedGroups = allGroups.slice(0, Math.min(5, allGroups.length));
+  }
+
   const pairsCount = totalTiles / 2;
   const tiles = [];
 
-  // Generate pairs
   for (let i = 0; i < pairsCount; i++) {
-    // Pick a random class
-    const classKeys = Object.keys(EQUIVALENCE_CLASSES);
-    const randomClassKey = randomChoice(classKeys);
-    const expressions = EQUIVALENCE_CLASSES[randomClassKey];
+    const group = randomChoice(selectedGroups);
+    const expr1 = randomChoice(group.expressions);
+    const expr2 = randomChoice(group.expressions);
 
-    // Pick two expressions from this class (can be the same)
-    const expr1 = randomChoice(expressions);
-    const expr2 = randomChoice(expressions);
-
-    tiles.push({ id: `tile-${i}-a`, content: expr1, classKey: randomClassKey, status: 'idle' });
-    tiles.push({ id: `tile-${i}-b`, content: expr2, classKey: randomClassKey, status: 'idle' });
+    tiles.push({
+      id: `tile-${i}-a`,
+      content: expr1,
+      classKey: group.id,
+      familyColor: group.color,
+      status: 'idle'
+    });
+    tiles.push({
+      id: `tile-${i}-b`,
+      content: expr2,
+      classKey: group.id,
+      familyColor: group.color,
+      status: 'idle'
+    });
   }
 
   // Shuffle tiles
@@ -97,8 +98,7 @@ export const checkMatch = (tile1, tile2) => {
 
 /**
  * Pathfinding for Lianliankan (max 2 turns).
- * The search includes a one-tile virtual border so edge pairs can connect
- * through the outside path, which is expected in classic Lianliankan rules.
+ * Includes a one-tile virtual border so edge pairs can connect through the outside.
  * @param {Array<Array<Object>>} grid
  * @param {Object} start {row, col}
  * @param {Object} end {row, col}
@@ -170,3 +170,55 @@ const isPassable = (grid, r, c, start, end) => {
 
   return grid[r][c].status === 'matched';
 };
+
+/**
+ * Checks if the current grid has at least one valid move.
+ * Used for solvability verification.
+ */
+export function hasAnyValidMove(grid) {
+  const idleTiles = grid.flat().filter(t => t.status === 'idle');
+  const byClass = {};
+
+  idleTiles.forEach(t => {
+    byClass[t.classKey] = byClass[t.classKey] || [];
+    byClass[t.classKey].push(t);
+  });
+
+  for (const classKey of Object.keys(byClass)) {
+    const tiles = byClass[classKey];
+    for (let i = 0; i < tiles.length; i++) {
+      for (let j = i + 1; j < tiles.length; j++) {
+        const path = findPath(
+          grid,
+          { row: tiles[i].row, col: tiles[i].col },
+          { row: tiles[j].row, col: tiles[j].col }
+        );
+        if (path) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Generates a guaranteed solvable grid by reshuffling if needed.
+ */
+export function generateSolvableGrid(rows, cols, levelId = DEFAULT_LEVEL_ID, difficulty = 'normal', maxAttempts = 50) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const grid = generateGrid(rows, cols, levelId, difficulty);
+    if (hasAnyValidMove(grid)) {
+      return grid;
+    }
+  }
+
+  // Fallback: reduce difficulty and try again
+  if (difficulty === 'hard') {
+    return generateSolvableGrid(rows, cols, levelId, 'normal', maxAttempts);
+  }
+  if (difficulty === 'normal') {
+    return generateSolvableGrid(rows, cols, levelId, 'easy', maxAttempts);
+  }
+
+  throw new Error('Unable to generate a solvable grid');
+}
